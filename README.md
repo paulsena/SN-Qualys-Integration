@@ -61,6 +61,7 @@ Pictured above is the Application that was setup in SN for easy access to all of
 <!-- TOC --><a name="properties"></a>
 ## Properties
 This page provides quick access to settings that the scripting in the integration uses.  Rather than have to make coding changes to turn something on or off, they are parameterized here for ease of use.  The settings all have descriptions on the page.  Some notable ones are the ability to change retry logic and to limit the number of WS Calls the integration makes which is good for testing purposes if you only want to import a subset of data.
+
 ![image](https://github.com/paulsena/SN-Qualys-Integration/assets/826073/83d3153c-f0d3-4fcc-acd5-b96fa9067fa5)
 
 <!-- TOC --><a name="class-mappings"></a>
@@ -73,12 +74,14 @@ If no match is found in the lookup table, the record will be imported to the mai
 ## Scheduled Job
 
 The main entry point that triggers the integration.  Use this page to configure run time schedules
+
 <img width="385" alt="image" src="https://github.com/paulsena/SN-Qualys-Integration/assets/826073/ebde5608-e55b-4750-bb6a-c18fdbf9cb78">
 
 
 <!-- TOC --><a name="error-email"></a>
 ## Error Email
  The configuration section for the Email Alerts that get sound out when the Integration fails after retry.  You can change who the email goes to and the message body here.
+ 
 <img width="432" alt="image" src="https://github.com/paulsena/SN-Qualys-Integration/assets/826073/bd86ba69-f22e-4bfe-8537-c1162510d1c0">
 
 
@@ -89,6 +92,7 @@ Link to a custom report that shows newly imported CI Servers by the integration.
 ## REST Web Service
 Contains the configuration page of the Web Service Client that the integration uses.  Here is where you can configure the URL and Authentication information.  The URL parameters that are setup here are dynamically populated later on in the code.  Also note, that this OOB Module has a great testing mechanism that allows you to do a quick test that connectivity is working and pull back from raw XML without processing it. 
 Test Link on page: 
+
 <img width="399" alt="image" src="https://github.com/paulsena/SN-Qualys-Integration/assets/826073/e44e06bf-d919-49bd-ba64-b475467e2a7c">
 
 
@@ -98,12 +102,14 @@ Link to the 3 JavaScript includes that handle the main portion of the integratio
 QualysWSClient - Entry Point for Scripts.  Handles WS communication, Retry Logic, Pagination, and logging.  Calls other scripts.
 QualysProcessor - Main class to parse and map Qualys WS Response Data. Receives chunked XML from WS Client.
 QualysResultParser - Helper library to parse CSV data in the Result XML field.  Receives body of one of the sensor result fields from the XML. Returns a normalized Array of JSON objects.  Each Object representing one row.
+
 <img width="423" alt="image" src="https://github.com/paulsena/SN-Qualys-Integration/assets/826073/d77127ff-eaab-4634-8367-2ee4ce33c5ec">
 
 
 <!-- TOC --><a name="script-logs"></a>
 ## Script Logs
 Provides a link to the log tables.  Logs contain nice stats while the integration is running and even a stat summary when the integration is finished.  If Debugging is turned on, more verbose information about each CI being parsed is logged.  Normally keep this off until needed. 
+
 <img width="326" alt="image" src="https://github.com/paulsena/SN-Qualys-Integration/assets/826073/3ccf3f44-5872-4712-912d-b878ef0821dc">
 
 <!-- TOC --><a name="script-errors"></a>
@@ -125,20 +131,24 @@ Direct links to the CMDB tables with a filter only showing Qualys Imported CIs. 
 We designed the integration to be as easy as possible to maintain.  Due to functionality requested and the varying formats the CSV data embedded in the XML was returned, we couldn’t use the OOB UI friendly way of setting up Transform maps.  This had to be done via JavaScript code which opens up a lot more powerful functionality.
 
 Step 1, in order to pull an additional field of data, you have to update the properties page with the new QID.  This gets sent to Qualys as a URL parameter so it knows what servers to pull back and include that sensor data.  So for example, pulling back IP addresses would have its own QID which is called a “sensor” in Qualys.  In the XML this will return a new entry in the detection list section of the XML.  So for example here is a snippet of XML that comes back with one sensor result for IP address:
+
 <img width="432" alt="image" src="https://github.com/paulsena/SN-Qualys-Integration/assets/826073/1ddc95a3-2b3f-4069-8ce9-928daa61f987">
 
 
 Once you make an update to the Properties page (in effect modifying the URL Parameters), an easy way to test the data coming back would be to go to the REST Web Service link in the admin panel and using the OOB test functionality.  More information available at the SN Wiki but essentially it would be as easy as modifying some test parameters, clicking the Test link, and receiving the XML Response back on screen.
 
 Step 2 would be to update the mappings and parsing section of the code.  Since all Sensor parsing is done by the helper class QualysResultParser, this is where you should start.  The input to the class is a QID number and the content of the <Results> tag for that sensor.  Note that the <![CData text you see in the example screen shot above will not be part of the result text that gets passed.  It is automatically removed by the WS engine.  You would get just the text starting with “IP address ….”. In the file there is a Case Select statement that determines what parsing function is mapped to what QID.  If there is already a parsing function that can parse the same format of data, then you can reuse it.  If not, you can simply write your own function.  The function should return the same format of normalized data though.  It is an Array of JSON objects.  Each object represents one row or record from the CSV.  So in the case of the IP sensor it would look like JSON object for 2 IP addresses:
+
 <img width="320" alt="image" src="https://github.com/paulsena/SN-Qualys-Integration/assets/826073/b3e1c1da-b4c2-4f44-b10b-ad123275ffd3">
 
 The Json objects are essentially Key:Value pairs.  The key can be any name.  You just have to use it when adding it to your mappings.
 
 Step 3.  Update the mappings section of the QualysProcessor.  In the main Process function of this script you can see the existing code build up a “mapping” object (again just Key Value pairs) then pass it to a helper function, MapFields() for a nice clean way to map data in SN.  You can just add to this existing pattern.  Simply add your new field and value to the object.
+
 ![image](https://github.com/paulsena/SN-Qualys-Integration/assets/826073/2c2f5ff5-ec2c-409d-9361-3db622104227)
 
 So a new entry would look something like this (with placeholder values replaced): 
+
 ![image](https://github.com/paulsena/SN-Qualys-Integration/assets/826073/a62b5c17-585e-435c-876e-a3b93b82864d)
 
 If you are adding new tables as well, you can follow the similar pattern and build a new mapping object and pass it to the mapFields function.  In the code the function parameters are detailed with comments.  This would include Coelesce fields, Server name, and mapping object.
@@ -150,6 +160,7 @@ Since each of the script includes are module, an easy way to test when adding ne
 Each of the description fields for the Script Includes contain some sample stub data for unit testing.  Feel free to reuse these or write your own test data.
 
 An example test to run would go something like this:
+
 <img width="432" alt="image" src="https://github.com/paulsena/SN-Qualys-Integration/assets/826073/e890f7b5-8153-44a4-9d5b-b3711af8d32d">
 
 For WS connectivity testing to Qualys, using the OOB testing feature on the REST Web Service page is a great feature too.  You can simply stub some data using the UI and click test.  Alternatively, you could use command line curl to test connectivity to Qualys although from your machine, not SN.
