@@ -1,3 +1,28 @@
+<!-- TOC start (generated with https://github.com/derlin/bitdowntoc) -->
+
+- [Overview](#overview)
+- [Architecture](#architecture)
+- [Components](#components)
+   * [Properties](#properties)
+   * [Class Mappings](#class-mappings)
+   * [Scheduled Job](#scheduled-job)
+   * [Error Email](#error-email)
+   * [Import Report](#import-report)
+   * [REST Web Service](#rest-web-service)
+   * [Script Includes](#script-includes)
+   * [Script Logs](#script-logs)
+   * [Script Errors](#script-errors)
+   * [Running Jobs](#running-jobs)
+   * [Qualys Imported Servers & Applications](#qualys-imported-servers-applications)
+- [Modifications to add new mappings](#modifications-to-add-new-mappings)
+- [Testing](#testing)
+- [Addendum: Sample Qualys Result XML](#addendum-sample-qualys-result-xml)
+
+<!-- TOC end -->
+
+
+
+<!-- TOC --><a name="overview"></a>
 # Overview
 
 Qualys Integration for the ServiceNow CMDB.  In this document, we will explain the architecture of the integration and outline the Service Now components that were developed during the implementation in hopes to make maintenance as easy as possible.  The integration was built in a modular, well coded and documented manner to emphasis this.    Some features the integration include: 
@@ -19,41 +44,50 @@ User Guide - https://www.qualys.com/docs/qualys-api-v2-user-guide.pdf
 The Integration pulls Asset and related information into SN on a scheduled basis.  Currently the integration is setup to map only Servers (including its related data) and Application Cis but is flexible enough to pull any CMDB information as long as the information is returned from Qualys and the mappings are properly setup in the Integration.
 
 
+<!-- TOC --><a name="architecture"></a>
 # Architecture
 
 The Qualys API is a standard REST Web Service over HTTPS for encryption and uses Basic Auth for Authentication.  A scheduled job was setup to import the data on a reoccurring bases.  This can be configured through the UI to be run on any schedule desired and is the main trigger point for kicking off the integration.  The Scheduled Job calls the Qualys WS Client script include which handles the WS request out to Qualys, in addition to the retry logic and chunking of data .  Once the WS Client script has the piece of chunked data it passes it off to the Qualys Processor.  The processor takes this data and performs all the parsing and mapping of the data into SN.  The data passed from Qualys is XML with Tab Delimited data embedded in a few of the fields in varying column row, row column, etc formats.  Because of this, the Qualys Processor makes a call out to the 3rd JavaScript Include, the Result Processor.  This processor is a helper utility to parse the differently formatted CSV data embedded in the XML fields and returns a standard array of JSON objects for the Qualys Processor to use in its mapping.    
 
 <img width="291" alt="image" src="https://github.com/paulsena/SN-Qualys-Integration/assets/826073/2d2eb64e-6a86-4454-86a2-f0cbc4e10d89">
 
+<!-- TOC --><a name="components"></a>
 # Components
  
 <img width="132" alt="image" src="https://github.com/paulsena/SN-Qualys-Integration/assets/826073/1abbef0b-45a3-4c65-9742-d6391acad1db">
 
 Pictured above is the Application that was setup in SN for easy access to all of the components for an Admin.  In this section we will outline what each component does.
 
+<!-- TOC --><a name="properties"></a>
 ## Properties
 This page provides quick access to settings that the scripting in the integration uses.  Rather than have to make coding changes to turn something on or off, they are parameterized here for ease of use.  The settings all have descriptions on the page.  Some notable ones are the ability to change retry logic and to limit the number of WS Calls the integration makes which is good for testing purposes if you only want to import a subset of data.
 
+<!-- TOC --><a name="class-mappings"></a>
 ## Class Mappings
 This links to a lookup table that provides mapping between hostname codes and what table to map the CI to on import.  The hostname code is a 3 character code that is used to match the 4th through 6th character in the Netbios hostname string imported from Qualys.  So for example if the lookup class mappings table has an entry for SWT mapping to the Switch CI Table and the scanned host has a Netbios name of BRCSWT14, the record will be imported as a Switch.
 
 If no match is found in the lookup table, the record will be imported to the main CMDB CI table (cmdb_ci).  At a later point, an admin can move this record manually to the appropriate table by setting the appropriate value in the OOB Class field on the CI record.  A business rule will automatically move the record.
 
+<!-- TOC --><a name="scheduled-job"></a>
 ## Scheduled Job
 
 The main entry point that triggers the integration.  Use this page to configure run time schedules
 
 
+<!-- TOC --><a name="error-email"></a>
 ## Error Email
  The configuration section for the Email Alerts that get sound out when the Integration fails after retry.  You can change who the email goes to and the message body here.
 
 
+<!-- TOC --><a name="import-report"></a>
 ## Import Report
 Link to a custom report that shows newly imported CI Servers by the integration.
+<!-- TOC --><a name="rest-web-service"></a>
 ## REST Web Service
 Contains the configuration page of the Web Service Client that the integration uses.  Here is where you can configure the URL and Authentication information.  The URL parameters that are setup here are dynamically populated later on in the code.  Also note, that this OOB Module has a great testing mechanism that allows you to do a quick test that connectivity is working and pull back from raw XML without processing it. 
 Test Link on page: 
 
+<!-- TOC --><a name="script-includes"></a>
 ## Script Includes
 Link to the 3 JavaScript includes that handle the main portion of the integration.
 QualysWSClient - Entry Point for Scripts.  Handles WS communication, Retry Logic, Pagination, and logging.  Calls other scripts.
@@ -61,20 +95,25 @@ QualysProcessor - Main class to parse and map Qualys WS Response Data. Receives 
 QualysResultParser - Helper library to parse CSV data in the Result XML field.  Receives body of one of the sensor result fields from the XML. Returns a normalized Array of JSON objects.  Each Object representing one row.
 
 
+<!-- TOC --><a name="script-logs"></a>
 ## Script Logs
 Provides a link to the log tables.  Logs contain nice stats while the integration is running and even a stat summary when the integration is finished.  If Debugging is turned on, more verbose information about each CI being parsed is logged.  Normally keep this off until needed. 
 
+<!-- TOC --><a name="script-errors"></a>
 ## Script Errors
 Link to Error Log.  Things such as uncaught exceptions and failures that are retried are logged here.  Good to keep an eye on this every once in a while for any entries, but the Email and Incident alerts should do a good job of warning you first.
 
+<!-- TOC --><a name="running-jobs"></a>
 ## Running Jobs
 A link showing all the currently running scheduled jobs on ServiceNow.
 Useful to know if an integration is currently running or not and when it was actually kicked off.  Shows all running jobs so you have to specifically for the Qualys Integration entry.
 
+<!-- TOC --><a name="qualys-imported-servers-applications"></a>
 ## Qualys Imported Servers & Applications
 Direct links to the CMDB tables with a filter only showing Qualys Imported CIs.  Handy for navigating through just Qualys CIs. 
 
 
+<!-- TOC --><a name="modifications-to-add-new-mappings"></a>
 # Modifications to add new mappings
 We designed the integration to be as easy as possible to maintain.  Due to functionality requested and the varying formats the CSV data embedded in the XML was returned, we couldn’t use the OOB UI friendly way of setting up Transform maps.  This had to be done via JavaScript code which opens up a lot more powerful functionality.
 
@@ -98,6 +137,7 @@ So a new entry would look something like this (with placeholder values replaced)
 
 If you are adding new tables as well, you can follow the similar pattern and build a new mapping object and pass it to the mapFields function.  In the code the function parameters are detailed with comments.  This would include Coelesce fields, Server name, and mapping object.
 
+<!-- TOC --><a name="testing"></a>
 # Testing
 Since each of the script includes are module, an easy way to test when adding new functionality is to test each module separately.  You can easy stub some data and call one function or class of the code and print the results to the screen.  To do this use the Background Scripts page available in the instance to run server side code.  If the high security plugin is turned on you will need the security_admin role and also need to enable a security session by clicking the lock icon next to your name in the UI.  More information available at the SN wiki.
 
@@ -111,6 +151,7 @@ For WS connectivity testing to Qualys, using the OOB testing feature on the REST
 During testing feel free to add additional debug statements to log more verbose data if needed.  This would be something like: this. LogDebug(“Sample Message”);
 
 
+<!-- TOC --><a name="addendum-sample-qualys-result-xml"></a>
 # Addendum: Sample Qualys Result XML
 This is a partial sample of the XML that gets returned from Qualys that the integration parses and maps: 
 ```xml
